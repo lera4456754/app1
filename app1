@@ -1,0 +1,41 @@
+from sqlite3 import IntegrityError                                                                       
+from wsgiref.validate import validator                                                                   
+                                                                                                         
+import redirect                                                                                          
+import psycopg2                                                                                          
+from flask import Flask, render_template, request                                                        
+from flask_sqlalchemy import SQLAlchemy                                                                  
+from werkzeug.security import generate_password_hash                                                     
+                                                                                                         
+app=Flask(__name__)                                                                                      
+app.config['SQLALCHEMY_DATABASE_URI']='postgresql:///service_db.db'                                      
+                                     
+db=SQLAlchemy(app)                                                                                       
+                                                                 
+class users(db.Model):                                                                                   
+    id=db.Column(db.Integer, primary_key=True)                                                           
+    full_name=db.Column(db.String(50),unique=True)                                                       
+    password=db.Column(db.String(500), nullable=True)                                                    
+@app.route('/login/', methods=("POST","GET"))                                                            
+def login():# добавление записей в БД                                                                    
+    if request.method=="POST":                            
+        try:# добавление записей в БД                                                                    
+            hash=generate_password_hash(request.form['password'])
+            u=users(name=request.form['name'], password=hash)           
+            db.session.add(u)                                                                            
+            db.session.flush()#перемещает запись из сессии в таблицу                                     
+                                                                                                         
+            p=users(name=request.form['name'], password=request.form['password'])                        
+            db.session.add(p)                                                                            
+            db.session.commit()# меняет данные в БД и сохраняет изменения в таблице                      
+                                                                                                         
+        except :                                                                                         
+            db.session.rollback()                                                                        
+            print('Ошибка')   
+    return render_template('login.html')                                                                 
+                                                                                                         
+@app.route('/')                                                                                          
+def index():                                                                                             
+    return render_template('login.html')                                                                 
+if __name__=="__main__":                                                                                 
+    app.run(debug=True)                                                                                  
